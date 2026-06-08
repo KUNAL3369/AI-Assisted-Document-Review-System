@@ -47,15 +47,38 @@ function parseGeminiResponse(text: string, modelName: string): {
     throw new Error('Gemini response missing "fields" array');
   }
 
-  const fields: ExtractedFieldInput[] = parsed.fields.map((f: Record<string, unknown>) => ({
-    field_key: String(f.field_key),
-    field_label: String(f.field_label),
-    field_type: (f.field_type as ExtractedFieldInput['field_type']) ?? 'text',
-    value: String(f.value ?? ''),
-    confidence: Number(f.confidence) || 0,
-    page_reference: f.page_reference ? Number(f.page_reference) : null,
-    source_hint: modelName,
-  }));
+  const fields: ExtractedFieldInput[] = parsed.fields.map((f: Record<string, unknown>) => {
+    const mappedValue = String(f.value ?? '');
+    const mappedConfidence = Number(f.confidence) || 0;
+
+    console.log('[FIELD_TRACE]', JSON.stringify({
+      raw_from_gemini: {
+        field_key: f.field_key,
+        field_label: f.field_label,
+        field_type: f.field_type,
+        value: f.value,
+        confidence: f.confidence,
+        confidence_type: typeof f.confidence,
+        page_reference: f.page_reference,
+      },
+      after_mapping: {
+        value: mappedValue,
+        confidence: mappedConfidence,
+      },
+      has_value: f.value !== undefined && f.value !== null && f.value !== '',
+      has_confidence: f.confidence !== undefined && f.confidence !== null,
+    }, null, 2));
+
+    return {
+      field_key: String(f.field_key),
+      field_label: String(f.field_label),
+      field_type: (f.field_type as ExtractedFieldInput['field_type']) ?? 'text',
+      value: mappedValue,
+      confidence: mappedConfidence,
+      page_reference: f.page_reference ? Number(f.page_reference) : null,
+      source_hint: modelName,
+    };
+  });
 
   const token_count = Number(parsed.token_count) || 0;
   const confidence_avg = Number(parsed.confidence_avg) ||

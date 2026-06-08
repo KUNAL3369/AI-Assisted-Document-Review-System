@@ -90,17 +90,29 @@ export async function POST(
     try {
       const result = await extractDocument(docId, pdfText);
 
-      const fieldsToInsert = result.fields.map((f) => ({
-        document_id: docId,
-        field_key: f.field_key,
-        field_label: f.field_label,
-        field_type: f.field_type,
-        ai_value: f.value,
-        confidence: f.confidence,
-        page_reference: f.page_reference,
-        source_hint: f.source_hint,
-        status: 'pending_review',
-      }));
+      const fieldsToInsert = result.fields.map((f) => {
+        const record = {
+          document_id: docId,
+          field_key: f.field_key,
+          field_label: f.field_label,
+          field_type: f.field_type,
+          ai_value: f.value,
+          confidence: f.confidence,
+          page_reference: f.page_reference,
+          source_hint: f.source_hint,
+          status: 'pending_review' as const,
+        };
+
+        console.log('[FIELD_TO_DB]', JSON.stringify({
+          field_key: f.field_key,
+          ai_value: record.ai_value,
+          ai_value_length: String(record.ai_value).length,
+          confidence: record.confidence,
+          source_hint: record.source_hint,
+        }));
+
+        return record;
+      });
 
       console.log('[FIELDS_PREPARED]', JSON.stringify(fieldsToInsert, null, 2));
 

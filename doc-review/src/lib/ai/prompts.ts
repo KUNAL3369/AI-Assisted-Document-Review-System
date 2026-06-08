@@ -17,6 +17,8 @@ Fields to extract:
 
 For each field provide a confidence score between 0.0 and 1.0.
 
+CRITICAL: Every field object MUST include "value" and "confidence". Do not omit these.
+
 Return format:
 {
   "fields": [
