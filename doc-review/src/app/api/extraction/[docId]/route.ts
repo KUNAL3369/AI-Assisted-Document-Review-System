@@ -142,7 +142,9 @@ export async function POST(
           model_used: result.model_used,
         },
       }, { status: 200 });
-    } catch (extractionError) {
+    } catch (error) {
+      console.error(error);
+
       await supabase
         .from('documents')
         .update({ status: 'error' })
@@ -152,10 +154,15 @@ export async function POST(
         event_type: 'extraction.failed',
         user_id: user.id,
         document_id: docId,
-        metadata: { error: String(extractionError) },
+        metadata: { error: error instanceof Error ? error.message : String(error) },
       });
 
-      throw extractionError;
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : "Extraction failed"
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
     const { handleApiError } = await import('@/lib/auth/guard');
