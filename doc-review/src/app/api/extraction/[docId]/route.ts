@@ -102,9 +102,13 @@ export async function POST(
         status: 'pending_review',
       }));
 
+      console.log('[FIELDS_PREPARED]', JSON.stringify(fieldsToInsert, null, 2));
+
       const { error: insertError } = await supabase
         .from('extracted_fields')
         .upsert(fieldsToInsert, { onConflict: 'document_id,field_key' });
+
+      console.log('[DB_INSERT_RESULT]', insertError ? `ERROR: ${insertError.message}` : 'SUCCESS');
 
       if (insertError) {
         throw new Error(`Failed to insert fields: ${insertError.message}`);

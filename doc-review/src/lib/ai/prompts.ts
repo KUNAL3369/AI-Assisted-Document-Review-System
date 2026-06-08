@@ -26,8 +26,7 @@ Return format:
       "field_type": "text",
       "value": "INV-001",
       "confidence": 0.97,
-      "page_reference": 1,
-      "source_hint": "gemini-1.5-flash"
+      "page_reference": 1
     }
   ],
   "token_count": 0,
