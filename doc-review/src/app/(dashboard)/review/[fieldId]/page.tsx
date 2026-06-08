@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { formatDate, formatConfidence, confidenceColor } from '@/lib/utils';
+import { formatDate, formatConfidence, confidenceColor, parseValue } from '@/lib/utils';
 import { Button } from '@/components/shared/Button';
 import type { ExtractedField, Document } from '@/lib/types';
 
@@ -171,8 +171,18 @@ export default function FieldReviewPage() {
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
                 AI Extracted Value
               </p>
-              <div className="bg-gray-50 rounded-md p-3 font-mono text-sm text-gray-900 mb-4">
-                {field.ai_value ?? '—'}
+              <div className="bg-gray-50 rounded-md p-3 font-mono text-sm text-gray-900 mb-4 overflow-auto max-h-64">
+                {field.field_type === 'array' || field.field_type === 'object' ? (
+                  (() => {
+                    const parsed = parseValue(field.ai_value);
+                    if (Array.isArray(parsed) || typeof parsed === 'object') {
+                      return <pre className="whitespace-pre-wrap text-xs">{JSON.stringify(parsed, null, 2)}</pre>;
+                    }
+                    return field.ai_value ?? '—';
+                  })()
+                ) : (
+                  field.ai_value ?? '—'
+                )}
               </div>
 
               <div className="flex gap-3 flex-wrap">
@@ -207,12 +217,21 @@ export default function FieldReviewPage() {
               </p>
               <div className="mb-2">
                 <p className="text-xs text-gray-400 mb-1">AI value: {field.ai_value}</p>
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
-                />
+                {field.field_type === 'array' || field.field_type === 'object' ? (
+                  <textarea
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                    rows={6}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                  />
+                )}
               </div>
               <div className="flex gap-3">
                 <Button variant="primary" onClick={handleEdit}>

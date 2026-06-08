@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { formatDate, formatConfidence, confidenceColor } from '@/lib/utils';
+import { formatDate, formatConfidence, confidenceColor, formatValueDisplay } from '@/lib/utils';
 import { Button } from '@/components/shared/Button';
 import type { ExtractedField } from '@/lib/types';
 
@@ -184,8 +184,16 @@ export default function ReviewQueuePage() {
                   <td className="p-3 text-gray-600 max-w-[200px] truncate">
                     {field.documents?.filename ?? '—'}
                   </td>
-                  <td className="p-3 text-gray-900 font-mono text-xs max-w-[150px] truncate">
-                    {field.ai_value ?? '—'}
+                  <td className="p-3 text-gray-900 font-mono text-xs max-w-[200px] truncate"
+                      title={field.ai_value ?? ''}>
+                    {field.field_type === 'array' || field.field_type === 'object' ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                        {formatValueDisplay(field.ai_value, field.field_type)}
+                      </span>
+                    ) : (
+                      field.ai_value ?? '—'
+                    )}
                   </td>
                   <td className={`p-3 font-medium ${confidenceColor(field.confidence)}`}>
                     {formatConfidence(field.confidence)}

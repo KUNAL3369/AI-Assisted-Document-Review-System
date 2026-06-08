@@ -82,6 +82,8 @@ create table extracted_fields (
     field_label     text not null,
     field_type      text not null default 'text',
     ai_value        text,
+    -- future: add ai_value_json jsonb for structured field data (line_items, etc.)
+    -- while keeping ai_value text for backward-compatible display
     confidence      numeric(4,3),
     status          field_status not null default 'pending_review',
     reviewed_by     uuid references auth.users(id),

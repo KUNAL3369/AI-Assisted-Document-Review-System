@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SYSTEM_PROMPT } from './prompts';
+import { normalizeValue } from '@/lib/utils';
 import type { ExtractionResult, ExtractedFieldInput } from './types';
 
 const GEMINI_INPUT_RATE = 0.000000075;
@@ -48,8 +49,19 @@ function parseGeminiResponse(text: string, modelName: string): {
   }
 
   const fields: ExtractedFieldInput[] = parsed.fields.map((f: Record<string, unknown>) => {
-    const mappedValue = String(f.value ?? '');
+    const isArray = Array.isArray(f.value);
+    const isObject = !isArray && typeof f.value === 'object' && f.value !== null;
+
+    if (isArray) {
+      console.log('[LINE_ITEMS_RAW]', JSON.stringify(f.value));
+    }
+
+    const mappedValue = normalizeValue(f.value);
     const mappedConfidence = Number(f.confidence) || 0;
+
+    if (isArray || isObject) {
+      console.log('[STRUCTURED_VALUE_NORMALIZED]', mappedValue);
+    }
 
     console.log('[FIELD_TRACE]', JSON.stringify({
       raw_from_gemini: {
@@ -57,6 +69,7 @@ function parseGeminiResponse(text: string, modelName: string): {
         field_label: f.field_label,
         field_type: f.field_type,
         value: f.value,
+        value_type: Array.isArray(f.value) ? 'array' : typeof f.value,
         confidence: f.confidence,
         confidence_type: typeof f.confidence,
         page_reference: f.page_reference,

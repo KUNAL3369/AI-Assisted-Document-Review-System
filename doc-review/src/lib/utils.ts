@@ -5,6 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function normalizeValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (Array.isArray(value) || typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
 export function formatCurrency(amount: string | number): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   return new Intl.NumberFormat('en-US', {
@@ -35,6 +47,31 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function parseValue(value: string | null): unknown {
+  if (!value) return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+export function formatValueDisplay(value: string | null, fieldType?: string): string {
+  if (!value) return '—';
+
+  if (fieldType === 'array' || fieldType === 'object') {
+    const parsed = parseValue(value);
+    if (Array.isArray(parsed)) {
+      return `${parsed.length} item${parsed.length !== 1 ? 's' : ''}`;
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return '1 item';
+    }
+  }
+
+  return value;
 }
 
 export function formatConfidence(score: number | null): string {
