@@ -37,6 +37,13 @@ export async function extractDocument(
   const primaryProvider = process.env.AI_PROVIDER ?? process.env.PRIMARY_PROVIDER ?? 'gemini';
   const fallbackProvider = process.env.FALLBACK_PROVIDER;
 
+  console.log('[PROVIDER_CONFIG]', JSON.stringify({
+    primary: process.env.PRIMARY_PROVIDER,
+    fallback: process.env.FALLBACK_PROVIDER,
+    aiProvider: process.env.AI_PROVIDER,
+    hasGroqKey: !!process.env.GROQ_API_KEY,
+  }));
+
   console.log(`[EXTRACT] Primary="${primaryProvider}"${fallbackProvider ? ` Fallback="${fallbackProvider}"` : ''} Live mode — for ${documentId}`);
 
   const primaryHandler = PROVIDER_HANDLERS[primaryProvider];
@@ -47,7 +54,20 @@ export async function extractDocument(
   try {
     return await primaryHandler(documentId, pdfText);
   } catch (err: unknown) {
+    const e = err as { name?: string; status?: number; message?: string };
+
+    console.log('[PRIMARY_ERROR]', JSON.stringify({
+      name: e?.name ?? typeof err,
+      status: e?.status ?? 0,
+      message: e?.message?.substring(0, 300) ?? String(err ?? ''),
+    }));
+
     const isRetryable = isRetryableError(err);
+
+    console.log('[FALLBACK_DECISION]', JSON.stringify({
+      retryable: isRetryable,
+      fallbackProvider: process.env.FALLBACK_PROVIDER,
+    }));
 
     if (isRetryable && fallbackProvider) {
       const fallbackHandler = PROVIDER_HANDLERS[fallbackProvider];
