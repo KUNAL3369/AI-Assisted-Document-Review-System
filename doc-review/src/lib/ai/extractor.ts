@@ -6,6 +6,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const PROVIDER_HANDLERS: Record<string, (documentId: string, pdfText: string) => Promise<ExtractionResult>> = {
+  gemini: liveExtract,
+};
+
 export async function extractDocument(
   documentId: string,
   pdfText: string
@@ -18,6 +22,13 @@ export async function extractDocument(
     return dummyExtract(documentId);
   }
 
-  console.log(`[EXTRACT] Live mode — calling Gemini for ${documentId}`);
-  return liveExtract(documentId, pdfText);
+  const provider = process.env.AI_PROVIDER ?? 'gemini';
+  console.log(`[EXTRACT] Provider="${provider}" Live mode — for ${documentId}`);
+
+  const handler = PROVIDER_HANDLERS[provider];
+  if (!handler) {
+    throw new Error(`Unsupported AI_PROVIDER "${provider}". Supported: ${Object.keys(PROVIDER_HANDLERS).join(', ')}`);
+  }
+
+  return handler(documentId, pdfText);
 }

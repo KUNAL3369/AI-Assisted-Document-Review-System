@@ -75,7 +75,7 @@ describe('liveExtract error handling', () => {
 
   it('retries on 429 rate-limit error then succeeds', async () => {
     mockGenerateContent
-      .mockRejectedValueOnce(new Error('429 Too Many Requests'))
+      .mockRejectedValueOnce(Object.assign(new Error('429 Too Many Requests'), { status: 429 }))
       .mockResolvedValueOnce({
         response: {
           text: () => JSON.stringify({
@@ -104,27 +104,30 @@ describe('liveExtract error handling', () => {
     expect(result.fields).toHaveLength(11);
     expect(result.model_used).toBe('gemini-1.5-flash');
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-  });
+  }, 10000);
 
-  it('throws after max retries on persistent 429', async () => {
+  it('throws after max retries on persistent 500', async () => {
     mockGenerateContent
-      .mockRejectedValueOnce(new Error('429 Too Many Requests'))
-      .mockRejectedValueOnce(new Error('429 Too Many Requests'))
-      .mockRejectedValueOnce(new Error('429 Too Many Requests'));
+      .mockRejectedValueOnce(Object.assign(new Error('Service Unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('Service Unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('Service Unavailable'), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error('Service Unavailable'), { status: 503 }));
 
     const { liveExtract } = await import('../../src/lib/ai/live-extractor');
     await expect(liveExtract('doc-1', 'invoice text')).rejects.toThrow(
-      '429 Too Many Requests'
+      'Service Unavailable'
     );
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
-  });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(4);
+  }, 25000);
 
-  it('does not retry on non-429 errors', async () => {
-    mockGenerateContent.mockRejectedValueOnce(new Error('500 Internal Server Error'));
+  it('does not retry on non-retryable errors (400)', async () => {
+    mockGenerateContent.mockRejectedValueOnce(
+      Object.assign(new Error('Bad Request: invalid model'), { status: 400 })
+    );
 
     const { liveExtract } = await import('../../src/lib/ai/live-extractor');
     await expect(liveExtract('doc-1', 'invoice text')).rejects.toThrow(
-      '500 Internal Server Error'
+      'Bad Request: invalid model'
     );
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });

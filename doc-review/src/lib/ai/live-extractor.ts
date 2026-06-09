@@ -6,8 +6,9 @@ import type { ExtractionResult, ExtractedFieldInput } from './types';
 const GEMINI_INPUT_RATE = 0.000000075;
 const GEMINI_OUTPUT_RATE = 0.000000300;
 
-const MAX_RETRIES = 2;
-const BASE_DELAY_MS = 1000;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [2000, 5000, 10000];
+const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -109,7 +110,9 @@ async function generateWithRetry(
 ): Promise<{ responseText: string; promptTokens: number; completionTokens: number; totalTokens: number }> {
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    console.log(`[GEMINI_ATTEMPT] Attempt ${attempt}/${MAX_ATTEMPTS}`);
+
     try {
       const result = await model.generateContent([
         { text: promptText },
@@ -119,6 +122,13 @@ async function generateWithRetry(
       const response = result.response;
       const usage = response.usageMetadata;
 
+      console.log('[GEMINI_SUCCESS]', JSON.stringify({
+        attempt,
+        promptTokens: usage?.promptTokenCount ?? 0,
+        candidatesTokenCount: usage?.candidatesTokenCount ?? 0,
+        totalTokenCount: usage?.totalTokenCount ?? 0,
+      }));
+
       return {
         responseText: response.text(),
         promptTokens: usage?.promptTokenCount ?? 0,
@@ -126,30 +136,24 @@ async function generateWithRetry(
         totalTokens: usage?.totalTokenCount ?? 0,
       };
     } catch (err: any) {
-      console.error("========== GEMINI ERROR ==========");
-      console.error("ERROR:", err);
-      console.error("MESSAGE:", err?.message);
-      console.error("CAUSE:", err?.cause);
+      const statusCode = err?.status ?? 0;
+      const errorMessage = err?.message ?? String(err);
 
-      if (err?.cause) {
-        console.error("CAUSE CODE:", err.cause.code);
-        console.error("CAUSE ERRNO:", err.cause.errno);
-        console.error("CAUSE SYSCALL:", err.cause.syscall);
-        console.error("CAUSE HOST:", err.cause.hostname);
-      }
+      console.log('[GEMINI_STATUS]', statusCode);
+      console.error('[GEMINI_ERROR_DETAIL]', JSON.stringify({
+        status: statusCode,
+        message: errorMessage.substring(0, 300),
+        attempt,
+      }));
 
-      console.error("=================================");
+      lastError = err instanceof Error ? err : new Error(errorMessage);
 
-      lastError = err instanceof Error ? err : new Error(String(err));
+      const isRetryable = RETRYABLE_STATUSES.has(statusCode) ||
+        [429, 500, 502, 503, 504].some((code) => errorMessage.startsWith(String(code)));
 
-      const isRateLimit =
-        lastError.message.includes('429') ||
-        lastError.message.includes('RESOURCE_EXHAUSTED') ||
-        lastError.message.includes('Too Many Requests');
-
-      if (isRateLimit && attempt < MAX_RETRIES) {
-        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
-        console.log(`[EXTRACT] Rate limited (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delayMs}ms...`);
+      if (isRetryable && attempt < MAX_ATTEMPTS) {
+        const delayMs = RETRY_DELAYS_MS[attempt - 1];
+        console.log(`[GEMINI_RETRY] Attempt ${attempt} failed (${statusCode}), retrying in ${delayMs}ms...`);
         await sleep(delayMs);
         continue;
       }
@@ -174,7 +178,9 @@ export async function liveExtract(
   console.log("HAS_KEY =", !!process.env.GEMINI_API_KEY);
   console.log("KEY_PREFIX =", process.env.GEMINI_API_KEY?.slice(0, 10));
 
-  const modelName = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash';
+  const provider = process.env.AI_PROVIDER ?? 'gemini';
+  const modelName = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash';
+  console.log("[PROVIDER]", provider);
   console.log("[MODEL_USED]", modelName);
 
   const genAI = new GoogleGenerativeAI(apiKey);
