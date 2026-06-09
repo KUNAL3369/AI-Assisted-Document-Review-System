@@ -115,6 +115,7 @@ export async function POST(
       });
 
       console.log('[FIELDS_PREPARED]', JSON.stringify(fieldsToInsert, null, 2));
+      console.log('[DB_INSERT]', JSON.stringify(fieldsToInsert, null, 2));
 
       const { error: insertError } = await supabase
         .from('extracted_fields')

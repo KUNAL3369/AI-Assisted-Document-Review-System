@@ -44,6 +44,7 @@ function parseGroqResponse(text: string, modelName: string): {
   }
 
   console.log('[PARSED_RESPONSE]', JSON.stringify(parsed, null, 2));
+  console.log('[GROQ_PARSED_JSON]', JSON.stringify(parsed, null, 2));
 
   if (!parsed.fields || !Array.isArray(parsed.fields)) {
     throw new Error('Groq response missing "fields" array');
@@ -82,6 +83,13 @@ function parseGroqResponse(text: string, modelName: string): {
       has_value: f.value !== undefined && f.value !== null && f.value !== '',
       has_confidence: f.confidence !== undefined && f.confidence !== null,
     }, null, 2));
+
+    console.log('[GROQ_FIELD]', JSON.stringify({
+      field_key: f.field_key,
+      value: f.value,
+      confidence: f.confidence,
+      keys: Object.keys(f),
+    }));
 
     return {
       field_key: String(f.field_key),
