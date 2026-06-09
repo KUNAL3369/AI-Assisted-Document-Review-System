@@ -30,7 +30,7 @@ export type AuditEventType =
   | 'user.role_changed'
   | 'ai.usage_recorded';
 
-export type FieldType = 'text' | 'number' | 'currency' | 'date';
+export type FieldType = 'text' | 'number' | 'currency' | 'date' | 'array' | 'object';
 
 export interface Document {
   id: string;
